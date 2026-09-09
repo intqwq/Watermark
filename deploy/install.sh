@@ -9,7 +9,7 @@ release="/opt/watermark/releases/$(date -u +%Y%m%dT%H%M%SZ)"
 previous="$(readlink -f /opt/watermark/current 2>/dev/null || true)"
 install -d -m 0755 "$release/dist" "$release/deploy"
 install -m 0644 "$source_dir/server.py" "$release/server.py"
-for file in index.html app.js renderer.js style.css favicon.svg; do
+for file in index.html app.js renderer.js i18n.js style.css favicon.svg favicon.ico favicon-32.png apple-touch-icon.png; do
   install -m 0644 "$source_dir/dist/$file" "$release/dist/$file"
 done
 install -m 0644 "$source_dir/deploy/bridge-registration.json" "$release/deploy/bridge-registration.json"

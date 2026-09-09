@@ -12,8 +12,12 @@ ASSETS = {
     '/index.html': ('index.html', 'text/html; charset=utf-8'),
     '/app.js': ('app.js', 'text/javascript; charset=utf-8'),
     '/renderer.js': ('renderer.js', 'text/javascript; charset=utf-8'),
+    '/i18n.js': ('i18n.js', 'text/javascript; charset=utf-8'),
     '/style.css': ('style.css', 'text/css; charset=utf-8'),
     '/favicon.svg': ('favicon.svg', 'image/svg+xml'),
+    '/favicon.ico': ('favicon.ico', 'image/x-icon'),
+    '/favicon-32.png': ('favicon-32.png', 'image/png'),
+    '/apple-touch-icon.png': ('apple-touch-icon.png', 'image/png'),
 }
 
 

@@ -1,10 +1,17 @@
 import {drawWatermark} from './renderer.js';
+import {browserLanguage, localizePage, translate} from './i18n.js';
+let language=browserLanguage();
+const t=key=>translate(key,language);
+localizePage(document,language);
 const $ = id => document.getElementById(id);
 const defaults = {text:'Made by inline_int@X',position:'br',style:'capsule',size:4,opacity:90,color:'light'};
 let settings = {...defaults}, source = null, filename = '', pending = false, loadId = 0, messageTimer;
 const canvas = $('preview'), ctx = canvas.getContext('2d');
-function notify(message) { $('status').textContent=message;clearTimeout(messageTimer);messageTimer=setTimeout(()=>$('status').textContent='',5500); }
+let statusKey='';
+function notify(key) { statusKey=key;$('status').textContent=t(key);clearTimeout(messageTimer);messageTimer=setTimeout(()=>{statusKey='';$('status').textContent='';},5500); }
 function sync() {
+  $('image-info').textContent=source ? `${source.width} × ${source.height} px` : t('waiting');
+  $('preview-note').textContent=t(source?'previewLoaded':'previewEmpty');
   $('watermark').value=settings.text; $('char-count').textContent=`${settings.text.length} / 100`;
   for (const name of ['size','opacity']) {$(name).value=settings[name];$(name+'-value').textContent=settings[name]+'%';}
   for (const name of ['position','style','color']) document.querySelectorAll(`[data-${name}]`).forEach(button=>button.setAttribute('aria-pressed',String(button.dataset[name]===settings[name])));
@@ -22,20 +29,19 @@ function render() {
 }
 async function loadFile(file) {
   if(!file) return;
-  if(!['image/jpeg','image/png','image/webp'].includes(file.type)) return notify('请选择 JPG、PNG 或 WebP 图片。');
-  if(file.size>30*1024*1024) return notify('图片超过 30 MB，请选择较小的文件。');
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type)) return notify('invalidType');
+  if(file.size>30*1024*1024) return notify('tooLarge');
   const request=++loadId;
   let bitmap;
   try {
     bitmap=await createImageBitmap(file,{imageOrientation:'from-image'});
     if(request!==loadId){bitmap.close();return;}
-    if(bitmap.width*bitmap.height>40000000 || Math.max(bitmap.width,bitmap.height)>16384){bitmap.close();return notify('图片尺寸过大，请使用不超过 4000 万像素、单边不超过 16384 像素的图片。');}
+    if(bitmap.width*bitmap.height>40000000 || Math.max(bitmap.width,bitmap.height)>16384){bitmap.close();return notify('tooManyPixels');}
     source?.close();source=bitmap;filename=file.name;
     $('empty-state').hidden=true;canvas.hidden=false;$('replace').hidden=false;
-    $('image-info').textContent=`${source.width} × ${source.height} px`;
-    $('image-info').title=filename;$('preview-note').textContent='实时预览 · 下载保留原尺寸';
-    sync();notify('图片已添加，调整右侧设置即可预览。');
-  } catch {bitmap?.close();if(request===loadId) notify('无法读取这张图片，请检查文件是否完整，或换一张图片。');}
+    $('image-info').title=filename;
+    sync();notify('loaded');
+  } catch {bitmap?.close();if(request===loadId) notify('readError');}
 }
 async function download() {
   if(!source || !settings.text.trim() || pending) return;
@@ -51,8 +57,8 @@ async function download() {
     const url=URL.createObjectURL(blob),link=document.createElement('a');
     link.href=url;link.download=exportName;
     document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-    notify('水印图片已生成，下载已开始。');
-  } catch {notify('导出失败，图片可能超出浏览器的处理能力，请尝试较小的图片。');}
+    notify('downloaded');
+  } catch {notify('exportError');}
   finally {if(output){output.width=0;output.height=0;}pending=false;sync();}
 }
 $('upload').onclick=$('replace').onclick=()=>$('file-input').click();
@@ -60,7 +66,7 @@ $('file-input').addEventListener('change',event=>{loadFile(event.target.files[0]
 $('watermark').addEventListener('input',event=>{settings.text=event.target.value;sync();});
 for(const name of ['size','opacity']) $(name).addEventListener('input',event=>{settings[name]=Number(event.target.value);sync();});
 for(const name of ['position','style','color']) document.querySelectorAll(`[data-${name}]`).forEach(button=>button.onclick=()=>{settings[name]=button.dataset[name];sync();});
-$('reset').onclick=()=>{settings={...defaults};sync();notify('已恢复默认水印设置。');};
+$('reset').onclick=()=>{settings={...defaults};sync();notify('resetDone');};
 $('download').onclick=download;
 let dragDepth=0;
 document.addEventListener('dragover',event=>event.preventDefault());
@@ -70,11 +76,15 @@ $('drop-zone').addEventListener('dragleave',()=>{dragDepth=Math.max(0,dragDepth-
 $('drop-zone').addEventListener('dragover',event=>{event.preventDefault();event.dataTransfer.dropEffect='copy';});
 $('drop-zone').addEventListener('drop',event=>{event.preventDefault();dragDepth=0;$('drop-zone').classList.remove('dragging');loadFile(event.dataTransfer.files[0]);});
 sync();
+addEventListener('languagechange',()=>{
+  language=browserLanguage();localizePage(document,language);sync();
+  if(statusKey)$('status').textContent=t(statusKey);
+});
 // Optional browser agent integration shares the same settings and renderer.
 if (document.modelContext?.registerTool) {
   const lifecycle=new AbortController();
   const tool={
-    name:'configure_watermark',title:'设置图片水印',
+    name:'configure_watermark',title:t('configureTool'),
     description:'Update the visible watermark settings and preview for the image already selected by the user. Does not upload or download an image.',
     inputSchema:{type:'object',properties:{text:{type:'string',minLength:1,maxLength:100},position:{type:'string',enum:['tl','tr','bl','br']},style:{type:'string',enum:['capsule','simple','serif']},size:{type:'number',minimum:2,maximum:10},opacity:{type:'number',minimum:10,maximum:100},color:{type:'string',enum:['light','dark']}},additionalProperties:false},
     annotations:{readOnlyHint:false,untrustedContentHint:false},
