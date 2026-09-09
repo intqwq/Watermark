@@ -1,1 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#5b51e8"/><path d="M17 19h14v26H17zm21 0h10v21H38M19 31h10M38 19v30" stroke="white" fill="none" stroke-width="4" stroke-linejoin="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Watermark Studio</title>
+  <defs>
+    <linearGradient id="ink" x1="8" y1="0" x2="56" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7869ff"/>
+      <stop offset="1" stop-color="#4534cf"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#ink)"/>
+  <path d="M14 21 22 44 32 28 42 44 50 21" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
