@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "service": "watermark",
+  "routes": [{
+    "hostname": "watermark.intqwq.com",
+    "origin": "http://127.0.0.1:18104",
+    "health_path": "/healthz",
+    "client_max_body_size": "1m",
+    "proxy_read_timeout_seconds": 30
+  }]
+}

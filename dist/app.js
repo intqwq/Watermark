@@ -1,6 +1,6 @@
 import {drawWatermark} from './renderer.js';
 const $ = id => document.getElementById(id);
-const defaults = {text:'inline_int@X',position:'br',style:'capsule',size:4,opacity:90,color:'light'};
+const defaults = {text:'Made by inline_int@X',position:'br',style:'capsule',size:4,opacity:90,color:'light'};
 let settings = {...defaults}, source = null, filename = '', pending = false, loadId = 0, messageTimer;
 const canvas = $('preview'), ctx = canvas.getContext('2d');
 function notify(message) { $('status').textContent=message;clearTimeout(messageTimer);messageTimer=setTimeout(()=>$('status').textContent='',5500); }
