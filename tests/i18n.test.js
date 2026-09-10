@@ -22,5 +22,5 @@ test('all UI labels, accessibility labels and notifications have both translatio
   for(const key of keys) for(const locale of ['en','zh'])assert.ok(messages[locale][key],`${locale}: ${key}`);
   for(const value of Object.values(messages.en))assert.doesNotMatch(value,/[\u3400-\u9fff]/);
   assert.equal(translate('invalidType','en'),'Choose a JPG, PNG or WebP image.');
-  assert.match(app,/text:'Made by inline_int@X'/);
+  assert.match(html,/placeholder="Made by intqwq@X"/);
 });

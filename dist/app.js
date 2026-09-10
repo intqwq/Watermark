@@ -1,12 +1,13 @@
-import {drawWatermark} from './renderer.js';
+import {DEFAULT_WATERMARK, drawWatermark, resolveWatermarkText} from './renderer.js';
 import {browserLanguage, localizePage, translate} from './i18n.js';
 let language=browserLanguage();
 const t=key=>translate(key,language);
 localizePage(document,language);
 const $ = id => document.getElementById(id);
-const defaults = {text:'Made by inline_int@X',position:'br',style:'capsule',size:4,opacity:90,color:'light'};
+const defaults = {text:'',position:'br',style:'capsule',size:4,opacity:90,color:'light'};
 let settings = {...defaults}, source = null, filename = '', pending = false, loadId = 0, messageTimer;
 const canvas = $('preview'), ctx = canvas.getContext('2d');
+$('watermark').placeholder=DEFAULT_WATERMARK;
 let statusKey='';
 function notify(key) { statusKey=key;$('status').textContent=t(key);clearTimeout(messageTimer);messageTimer=setTimeout(()=>{statusKey='';$('status').textContent='';},5500); }
 function sync() {
@@ -15,7 +16,7 @@ function sync() {
   $('watermark').value=settings.text; $('char-count').textContent=`${settings.text.length} / 100`;
   for (const name of ['size','opacity']) {$(name).value=settings[name];$(name+'-value').textContent=settings[name]+'%';}
   for (const name of ['position','style','color']) document.querySelectorAll(`[data-${name}]`).forEach(button=>button.setAttribute('aria-pressed',String(button.dataset[name]===settings[name])));
-  $('download').disabled=!source || !settings.text.trim() || pending;
+  $('download').disabled=!source || pending;
   render();
 }
 function render() {
@@ -44,7 +45,7 @@ async function loadFile(file) {
   } catch {bitmap?.close();if(request===loadId) notify('readError');}
 }
 async function download() {
-  if(!source || !settings.text.trim() || pending) return;
+  if(!source || pending) return;
   pending=true;sync();
   const exportName=filename.replace(/\.[^.]+$/,'')+'-watermarked.png';
   let output;
@@ -86,13 +87,13 @@ if (document.modelContext?.registerTool) {
   const tool={
     name:'configure_watermark',title:t('configureTool'),
     description:'Update the visible watermark settings and preview for the image already selected by the user. Does not upload or download an image.',
-    inputSchema:{type:'object',properties:{text:{type:'string',minLength:1,maxLength:100},position:{type:'string',enum:['tl','tr','bl','br']},style:{type:'string',enum:['capsule','simple','serif']},size:{type:'number',minimum:2,maximum:10},opacity:{type:'number',minimum:10,maximum:100},color:{type:'string',enum:['light','dark']}},additionalProperties:false},
+    inputSchema:{type:'object',properties:{text:{type:'string',maxLength:100,description:'Custom watermark text. Empty or whitespace-only text uses Made by intqwq@X.'},position:{type:'string',enum:['tl','tr','bl','br']},style:{type:'string',enum:['capsule','simple','serif']},size:{type:'number',minimum:2,maximum:10},opacity:{type:'number',minimum:10,maximum:100},color:{type:'string',enum:['light','dark']}},additionalProperties:false},
     annotations:{readOnlyHint:false,untrustedContentHint:false},
     execute(input){
       if(!input || typeof input!=='object' || Array.isArray(input)) throw new Error('Expected a settings object.');
       for(const [key,value] of Object.entries(input)){
         if(!Object.hasOwn(defaults,key))throw new Error('Unknown setting.');
-        if(key==='text' && (typeof value!=='string'||!value.trim()||value.length>100))throw new Error('Text must contain 1 to 100 characters.');
+        if(key==='text' && (typeof value!=='string'||value.length>100))throw new Error('Text must be a string of up to 100 characters.');
         if(['position','style','color'].includes(key) && !tool.inputSchema.properties[key].enum.includes(value))throw new Error('Invalid option.');
         if(['size','opacity'].includes(key)){
           const schema=tool.inputSchema.properties[key];
@@ -100,7 +101,7 @@ if (document.modelContext?.registerTool) {
           const step=key==='size'?.5:5;if(Math.abs(value/step-Math.round(value/step))>1e-8)throw new Error('Invalid slider step.');
         }
       }
-      settings={...settings,...input};sync();return {settings:{...settings},imageLoaded:!!source};
+      settings={...settings,...input};sync();return {settings:{...settings},watermarkText:resolveWatermarkText(settings.text),imageLoaded:!!source};
     }
   };
   try {Promise.resolve(document.modelContext.registerTool(tool,{signal:lifecycle.signal})).catch(()=>{});}catch{}

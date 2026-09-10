@@ -1,6 +1,11 @@
+export const DEFAULT_WATERMARK = 'Made by intqwq@X';
+
+export function resolveWatermarkText(text = '') {
+  return text.trim() || DEFAULT_WATERMARK;
+}
+
 export function drawWatermark(ctx, width, height, settings) {
-  const text = settings.text.trim();
-  if (!text) return null;
+  const text = resolveWatermarkText(settings.text);
   const short = Math.min(width, height);
   const margin = short * .035;
   const capsule = settings.style === 'capsule';
