@@ -1,30 +1,44 @@
 export const DEFAULT_WATERMARK = 'Made by intqwq@X';
+export const SIGNATURE_PRESETS = {
+  'signature-intqwq': {text:'intqwq',glyph:'\uE000'},
+  'signature-shuyuanlv': {text:'数原律',glyph:'\uE001'},
+};
+export const isHandwrittenStyle = style => style==='handwriting' || Object.hasOwn(SIGNATURE_PRESETS,style);
 
 export function resolveWatermarkText(text = '') {
   return text.trim() || DEFAULT_WATERMARK;
 }
 
 export function drawWatermark(ctx, width, height, settings) {
-  const text = resolveWatermarkText(settings.text);
+  const preset=SIGNATURE_PRESETS[settings.style];
+  const text = preset ? preset.glyph : resolveWatermarkText(settings.text);
   const short = Math.min(width, height);
-  const margin = short * .035;
   const capsule = settings.style === 'capsule';
-  let size = short * settings.size / 100;
-  const font = () => settings.style === 'serif' ? `italic 500 ${size}px Georgia, "Noto Serif SC", "Songti SC", SimSun, serif` : `600 ${size}px "Segoe UI", "Microsoft YaHei", sans-serif`;
+  let size = short * Math.max(.5,Math.min(10,settings.size)) / 100;
+  const gap = Number.isFinite(settings.margin) ? Math.max(0,Math.min(10,settings.margin)) : 1;
+  // Preserve the capsule outline even when its requested gap is zero.
+  const margin = Math.max(short * gap / 100,capsule ? Math.max(.5,size*.025)/2 : 0);
+  const font = () => isHandwrittenStyle(settings.style) ? `400 ${size}px "Lumen Hand", "Segoe UI", "Microsoft YaHei", sans-serif` : settings.style === 'serif' ? `italic 500 ${size}px Georgia, "Noto Serif SC", "Songti SC", SimSun, serif` : `600 ${size}px "Segoe UI", "Microsoft YaHei", sans-serif`;
   ctx.save();
+  ctx.textAlign = 'left';ctx.textBaseline = 'alphabetic';
   ctx.font = font();
+  const measure = () => {
+    const metrics=ctx.measureText(text);
+    const left=Math.max(0,metrics.actualBoundingBoxLeft || 0);
+    return {metrics,left,width:left+Math.max(metrics.width,metrics.actualBoundingBoxRight || 0)};
+  };
   let padX = capsule ? size * .8 : size * .15;
   let padY = capsule ? size * .5 : size * .2;
   const available = width - margin * 2;
-  const measured = ctx.measureText(text).width + padX * 2;
+  const measured = measure().width + padX * 2;
   if (measured > available) {
     const scale = available / measured;
     size *= scale; padX *= scale; padY *= scale; ctx.font = font();
   }
-  const metrics = ctx.measureText(text);
-  const ascent = metrics.actualBoundingBoxAscent || size * .8;
-  const descent = metrics.actualBoundingBoxDescent || size * .22;
-  const boxWidth = metrics.width + padX * 2;
+  const {metrics,left,width:textWidth} = measure();
+  const ascent = Math.max(0,metrics.actualBoundingBoxAscent ?? size * .8);
+  const descent = Math.max(0,metrics.actualBoundingBoxDescent ?? size * .22);
+  const boxWidth = textWidth + padX * 2;
   const boxHeight = ascent + descent + padY * 2;
   const x = settings.position.endsWith('r') ? width - margin - boxWidth : margin;
   const y = settings.position.startsWith('b') ? height - margin - boxHeight : margin;
@@ -39,7 +53,7 @@ export function drawWatermark(ctx, width, height, settings) {
   ctx.fillStyle = dark ? '#232531' : '#ffffff';
   if (!capsule) {ctx.shadowColor = dark ? 'rgba(255,255,255,.5)' : 'rgba(0,0,0,.55)';ctx.shadowBlur = size * .18;ctx.shadowOffsetY = size * .035;}
   ctx.textBaseline = 'alphabetic';
-  ctx.fillText(text,x+padX,y+padY+ascent);
+  ctx.fillText(text,x+padX+left,y+padY+ascent);
   ctx.restore();
   return {x,y,width:boxWidth,height:boxHeight};
 }

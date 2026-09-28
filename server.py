@@ -18,6 +18,8 @@ ASSETS = {
     '/favicon.ico': ('favicon.ico', 'image/x-icon'),
     '/favicon-32.png': ('favicon-32.png', 'image/png'),
     '/apple-touch-icon.png': ('apple-touch-icon.png', 'image/png'),
+    '/fonts/lumen-hand.woff2': ('fonts/lumen-hand.woff2', 'font/woff2'),
+    '/fonts/lumen-hand.ttf': ('fonts/lumen-hand.ttf', 'font/ttf'),
 }
 
 

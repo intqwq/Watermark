@@ -20,7 +20,10 @@ test('all UI labels, accessibility labels and notifications have both translatio
   const keys=[...html.matchAll(/data-i18n(?:-aria)?="([^"]+)"/g),...app.matchAll(/\b(?:notify|t)\('([^']+)'\)/g)].map(match=>match[1]);
   assert.ok(keys.length>40);
   for(const key of keys) for(const locale of ['en','zh'])assert.ok(messages[locale][key],`${locale}: ${key}`);
-  for(const value of Object.values(messages.en))assert.doesNotMatch(value,/[\u3400-\u9fff]/);
+  for(const [key,value] of Object.entries(messages.en)){
+    if(key==='signatureShuyuanlv')assert.equal(value,'数原律 signature'); // Preserve the user's proper name.
+    else assert.doesNotMatch(value,/[\u3400-\u9fff]/);
+  }
   assert.equal(translate('invalidType','en'),'Choose a JPG, PNG or WebP image.');
   assert.match(html,/placeholder="Made by intqwq@X"/);
 });
