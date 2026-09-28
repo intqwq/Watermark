@@ -1,6 +1,6 @@
-import {DEFAULT_WATERMARK, drawWatermark, resolveWatermarkText, SIGNATURE_PRESETS, isHandwrittenStyle} from './renderer.js';
-import {browserLanguage, localizePage, translate} from './i18n.js';
-import {loadSignature} from './signature.js';
+import {DEFAULT_WATERMARK, drawWatermark, resolveWatermarkText, SIGNATURE_PRESETS, isHandwrittenStyle} from './renderer.js?v=d707e59af361';
+import {browserLanguage, localizePage, translate} from './i18n.js?v=88ac0fc84ebd';
+import {loadSignature} from './signature.js?v=5b8e0412c15a';
 let language=browserLanguage();
 const t=key=>translate(key,language);
 localizePage(document,language);
@@ -46,7 +46,7 @@ async function loadSignatureArtwork(){
   if(signatureStatus==='ready')return;
   if(signaturePromise)return signaturePromise;
   signatureStatus='loading';sync();
-  signaturePromise=loadSignature(new URL('./signatures/intqwq-x.png',import.meta.url).href)
+  signaturePromise=loadSignature(new URL('./signatures/intqwq-x.png?v=eb81a6e13a6e',import.meta.url).href)
     .then(loaded=>{
       signature=loaded;signatureStatus='ready';
       const sample=$('signature-sample');sample.width=loaded.width;sample.height=loaded.height;
