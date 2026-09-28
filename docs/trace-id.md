@@ -11,6 +11,8 @@ Trace ID is an original, experimental blind image watermark implemented in this 
 
 Each selected image gets a cryptographically random 128-bit ID (`WM1-` plus 32 hexadecimal digits). Repeated exports from that selection share its ID, while their hashes can differ. Selecting the image again generates a new ID. The ID becomes part of the image pixels and is not secret.
 
+Cropping, rotating, undoing and restoring within the editor retain that selection's ID. Export records use the resulting dimensions. Trace ID is embedded after the image edits and visible watermark, so these editor operations do not damage the new watermark. Editing an already exported image in another app can still damage its existing ID. Crops smaller than 256 × 256 require turning Trace ID off before export.
+
 Images, IDs and export records are not uploaded. Heavy pixel processing runs in a local module worker. The normal preview shows the visible watermark; the small pixel changes from Trace ID are applied on download. Switching Trace ID off prevents a new embedding and does not remove an existing one.
 
 ## Limits

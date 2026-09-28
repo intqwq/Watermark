@@ -61,6 +61,7 @@ export function createTraceUI(t){
   };
   return {
     newImage(name,width,height){image={id:createTraceId(),name,width,height};lastRecord=null;sync();},
+    resizeImage(width,height){if(image){image={...image,width,height};lastRecord=null;sync();}},
     sync(state){enabled=state.enabled;pending=state.pending;sync();},
     canExport(){return !enabled||image&&image.width>=256&&image.height>=256;},
     async embed(ctx,width,height){

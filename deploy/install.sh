@@ -9,7 +9,7 @@ release="/opt/watermark/releases/$(date -u +%Y%m%dT%H%M%SZ)"
 previous="$(readlink -f /opt/watermark/current 2>/dev/null || true)"
 install -d -m 0755 "$release/dist/fonts" "$release/dist/signatures" "$release/deploy"
 install -m 0644 "$source_dir/server.py" "$release/server.py"
-for file in index.html app.js renderer.js signature.js trace-codec.js trace-worker.js trace-ui.js i18n.js style.css favicon.svg favicon.ico favicon-32.png apple-touch-icon.png; do
+for file in index.html app.js renderer.js image-edit.js editor-ui.js signature.js trace-codec.js trace-worker.js trace-ui.js i18n.js style.css favicon.svg favicon.ico favicon-32.png apple-touch-icon.png; do
   install -m 0644 "$source_dir/dist/$file" "$release/dist/$file"
 done
 install -m 0644 "$source_dir/dist/fonts/lumen-hand.woff2" "$release/dist/fonts/lumen-hand.woff2"

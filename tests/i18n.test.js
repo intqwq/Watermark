@@ -16,7 +16,7 @@ test('matches supported languages in browser preference order',()=>{
 test('all UI labels, accessibility labels and notifications have both translations',()=>{
   assert.deepEqual(Object.keys(messages.zh).sort(),Object.keys(messages.en).sort());
   const html=readFileSync(new URL('../dist/index.html',import.meta.url),'utf8');
-  const app=['app.js','trace-ui.js'].map(file=>readFileSync(new URL('../dist/'+file,import.meta.url),'utf8')).join('\n');
+  const app=['app.js','trace-ui.js','editor-ui.js'].map(file=>readFileSync(new URL('../dist/'+file,import.meta.url),'utf8')).join('\n');
   const keys=[...html.matchAll(/data-i18n(?:-aria)?="([^"]+)"/g),...app.matchAll(/\b(?:notify|t)\('([^']+)'\)/g)].map(match=>match[1]);
   assert.ok(keys.length>40);
   for(const key of keys) for(const locale of ['en','zh'])assert.ok(messages[locale][key],`${locale}: ${key}`);
