@@ -1,16 +1,18 @@
 import {DEFAULT_WATERMARK, drawWatermark, resolveWatermarkText, SIGNATURE_PRESETS, isHandwrittenStyle} from './renderer.js?v=d707e59af361';
-import {browserLanguage, localizePage, translate} from './i18n.js?v=88ac0fc84ebd';
+import {browserLanguage, localizePage, translate} from './i18n.js?v=412951c73d4f';
 import {loadSignature} from './signature.js?v=5b8e0412c15a';
+import {createTraceUI} from './trace-ui.js?v=4d5fd884a536';
 let language=browserLanguage();
 const t=key=>translate(key,language);
 localizePage(document,language);
 const $ = id => document.getElementById(id);
-const defaults = {text:'',position:'br',style:'capsule',size:4,margin:1,opacity:90,color:'light'};
+const defaults = {text:'',position:'br',style:'capsule',size:4,margin:1,opacity:90,color:'light',trace:true};
 const ranges={size:{minimum:.5,maximum:10,step:.1},margin:{minimum:0,maximum:10,step:.1},opacity:{minimum:10,maximum:100,step:5}};
 let settings = {...defaults}, source = null, filename = '', pending = false, loadId = 0, messageTimer;
 let fontStatus='loading',fontPromise;
 let signatureStatus='loading',signaturePromise,signature;
 const canvas = $('preview'), ctx = canvas.getContext('2d');
+const traceUI=createTraceUI(t);
 $('watermark').placeholder=DEFAULT_WATERMARK;
 let statusKey='';
 function notify(key) { statusKey=key;$('status').textContent=t(key);clearTimeout(messageTimer);messageTimer=setTimeout(()=>{statusKey='';$('status').textContent='';},5500); }
@@ -27,7 +29,12 @@ function sync() {
   $('retry-font').hidden=(!handwritten&&!signed) || assetStatus!=='error';
   $('retry-font').textContent=t(signed?'retrySignature':'retryFont');
   $('signature-sample').hidden=signatureStatus!=='ready';
-  $('download').disabled=!source || pending || !assetsReady();
+  $('trace-enabled').checked=settings.trace;
+  document.querySelectorAll('.settings button,.settings input').forEach(control=>control.disabled=pending);
+  $('upload').disabled=$('replace').disabled=pending;
+  traceUI.sync({enabled:settings.trace,pending});
+  $('download').disabled=!source || pending || !assetsReady() || !traceUI.canExport();
+  $('download').querySelector('[data-i18n]').textContent=t(pending?'exporting':'download');
   render();
 }
 function assetsReady(){return SIGNATURE_PRESETS[settings.style]?signatureStatus==='ready':!isHandwrittenStyle(settings.style)||fontStatus==='ready';}
@@ -68,36 +75,41 @@ async function loadHandwritingFont() {
 }
 async function loadFile(file) {
   if(!file) return;
+  if(pending)return notify('exporting');
   if(!['image/jpeg','image/png','image/webp'].includes(file.type)) return notify('invalidType');
   if(file.size>30*1024*1024) return notify('tooLarge');
   const request=++loadId;
   let bitmap;
   try {
     bitmap=await createImageBitmap(file,{imageOrientation:'from-image'});
-    if(request!==loadId){bitmap.close();return;}
+    if(request!==loadId||pending){bitmap.close();return;}
     if(bitmap.width*bitmap.height>40000000 || Math.max(bitmap.width,bitmap.height)>16384){bitmap.close();return notify('tooManyPixels');}
     source?.close();source=bitmap;filename=file.name;
+    traceUI.newImage(filename,bitmap.width,bitmap.height);
     $('empty-state').hidden=true;canvas.hidden=false;$('replace').hidden=false;
     $('image-info').title=filename;
     sync();notify('loaded');
   } catch {bitmap?.close();if(request===loadId) notify('readError');}
 }
 async function download() {
-  if(!source || pending || !assetsReady()) return;
+  if(!source || pending || !assetsReady() || !traceUI.canExport()) return;
   pending=true;sync();
+  const exportSettings={...settings};
   const exportName=filename.replace(/\.[^.]+$/,'')+'-watermarked.png';
   let output;
   try {
     output=document.createElement('canvas');output.width=source.width;output.height=source.height;
     const out=output.getContext('2d');if(!out)throw new Error('canvas');
-    out.drawImage(source,0,0);drawWatermark(out,output.width,output.height,settings,signature);
+    out.drawImage(source,0,0);drawWatermark(out,output.width,output.height,exportSettings,signature);
+    const identity=exportSettings.trace?await traceUI.embed(out,output.width,output.height):null;
     const blob=await new Promise(resolve=>output.toBlob(resolve,'image/png'));
     if(!blob) throw new Error('export');
+    if(identity)await traceUI.record(blob,identity,exportName,resolveWatermarkText(exportSettings.text));
     const url=URL.createObjectURL(blob),link=document.createElement('a');
     link.href=url;link.download=exportName;
     document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
     notify('downloaded');
-  } catch {notify('exportError');}
+  } catch(error) {notify(['traceTooSmall','traceCapacity','traceEmbedFailed','traceTimeout','traceProcessingError'].includes(error.message)?error.message:'exportError');}
   finally {if(output){output.width=0;output.height=0;}pending=false;sync();}
 }
 $('upload').onclick=$('replace').onclick=()=>$('file-input').click();
@@ -107,6 +119,7 @@ $('watermark').addEventListener('input',event=>{
   if(SIGNATURE_PRESETS[settings.style] && settings.text!==SIGNATURE_PRESETS[settings.style].text)settings.style='handwriting';
   sync();
 });
+$('trace-enabled').onchange=event=>{settings.trace=event.target.checked;sync();};
 for(const name of Object.keys(ranges)) $(name).addEventListener('input',event=>{settings[name]=Number(event.target.value);sync();});
 for(const name of ['position','style','color']) document.querySelectorAll(`[data-${name}]`).forEach(button=>button.onclick=()=>{
   settings[name]=button.dataset[name];
@@ -136,13 +149,15 @@ if (document.modelContext?.registerTool) {
   const tool={
     name:'configure_watermark',title:t('configureTool'),
     description:'Update the visible watermark settings and preview for the image already selected by the user. Does not upload or download an image.',
-    inputSchema:{type:'object',properties:{text:{type:'string',maxLength:100,description:'Custom watermark text. Empty uses Made by intqwq@X. The signature preset uses the supplied intqwq@X artwork; changing that text returns to handwriting.'},position:{type:'string',enum:['tl','tr','bl','br']},style:{type:'string',enum:['capsule','simple','serif','handwriting','signature-intqwq']},size:{type:'number',minimum:.5,maximum:10,multipleOf:.1},margin:{type:'number',minimum:0,maximum:10,multipleOf:.1,description:'Gap from the selected corner as a percentage of the shorter image side.'},opacity:{type:'number',minimum:10,maximum:100,multipleOf:5},color:{type:'string',enum:['light','dark']}},additionalProperties:false},
+    inputSchema:{type:'object',properties:{trace:{type:'boolean',description:'Embed a recoverable Trace ID in the exported image. On by default. Does not track views or upload images.'},text:{type:'string',maxLength:100,description:'Custom watermark text. Empty uses Made by intqwq@X. The signature preset uses the supplied intqwq@X artwork; changing that text returns to handwriting.'},position:{type:'string',enum:['tl','tr','bl','br']},style:{type:'string',enum:['capsule','simple','serif','handwriting','signature-intqwq']},size:{type:'number',minimum:.5,maximum:10,multipleOf:.1},margin:{type:'number',minimum:0,maximum:10,multipleOf:.1,description:'Gap from the selected corner as a percentage of the shorter image side.'},opacity:{type:'number',minimum:10,maximum:100,multipleOf:5},color:{type:'string',enum:['light','dark']}},additionalProperties:false},
     annotations:{readOnlyHint:false,untrustedContentHint:false},
     async execute(input){
+      if(pending)throw new Error(t('exporting'));
       if(!input || typeof input!=='object' || Array.isArray(input)) throw new Error('Expected a settings object.');
       for(const [key,value] of Object.entries(input)){
         if(!Object.hasOwn(defaults,key))throw new Error('Unknown setting.');
         if(key==='text' && (typeof value!=='string'||value.length>100))throw new Error('Text must be a string of up to 100 characters.');
+        if(key==='trace' && typeof value!=='boolean')throw new Error('Trace ID must be a boolean.');
         if(['position','style','color'].includes(key) && !tool.inputSchema.properties[key].enum.includes(value))throw new Error('Invalid option.');
         if(Object.hasOwn(ranges,key)){
           const schema=ranges[key];

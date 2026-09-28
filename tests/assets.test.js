@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 
 test('published asset URLs match the current dependent files, preventing mixed cached releases',()=>{
   let checked=0;
-  for(const parent of ['index.html','app.js','style.css']){
+  for(const parent of ['index.html','app.js','style.css','trace-ui.js','trace-worker.js']){
     const source=readFileSync(new URL('../dist/'+parent,import.meta.url),'utf8');
     for(const match of source.matchAll(/\.\/([^"'\s<>?]+)\?v=([a-f0-9]{12})(?=["'])/g)){
       const [,path,version]=match;
@@ -15,5 +15,5 @@ test('published asset URLs match the current dependent files, preventing mixed c
       checked++;
     }
   }
-  assert.equal(checked,8);
+  assert.equal(checked,12);
 });

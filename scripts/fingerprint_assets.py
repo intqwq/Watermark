@@ -22,6 +22,8 @@ def update(file,dependencies):
     target.write_text(content,encoding='utf-8',newline='\n')
 
 update('style.css',['fonts/lumen-hand.woff2'])
-update('app.js',['renderer.js','i18n.js','signature.js','signatures/intqwq-x.png'])
+update('trace-worker.js',['trace-codec.js'])
+update('trace-ui.js',['trace-codec.js','trace-worker.js'])
+update('app.js',['renderer.js','i18n.js','signature.js','signatures/intqwq-x.png','trace-ui.js'])
 update('index.html',['app.js','style.css','fonts/lumen-hand.woff2'])
 print('Versioned HTML, modules, stylesheet, font and signature artwork URLs.')

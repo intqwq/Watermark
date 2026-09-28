@@ -4,7 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="为图片添加精致的文字水印，自选四角位置，实时预览并原尺寸下载。图片仅在你的浏览器中处理。">
   <meta name="theme-color" content="#f5f6f8"><title>印记 · 电子水印器</title>
-  <link rel="icon" href="./favicon.ico?v=3" sizes="16x16 32x32 48x48"><link rel="icon" href="./favicon-32.png?v=3" type="image/png" sizes="32x32"><link rel="icon" href="./favicon.svg?v=3" type="image/svg+xml" sizes="any"><link rel="apple-touch-icon" href="./apple-touch-icon.png?v=3" sizes="180x180"><link rel="preload" href="./fonts/lumen-hand.woff2?v=f2587201364d" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="./style.css?v=742d4f823d34">
+  <link rel="icon" href="./favicon.ico?v=3" sizes="16x16 32x32 48x48"><link rel="icon" href="./favicon-32.png?v=3" type="image/png" sizes="32x32"><link rel="icon" href="./favicon.svg?v=3" type="image/svg+xml" sizes="any"><link rel="apple-touch-icon" href="./apple-touch-icon.png?v=3" sizes="180x180"><link rel="preload" href="./fonts/lumen-hand.woff2?v=f2587201364d" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="./style.css?v=98bed8037df1">
 </head>
 <body>
   <header class="topbar"><a class="brand" href="./" aria-label="印记首页" data-i18n-aria="home"><span class="brand-mark">印</span><strong><span data-i18n="brand">印记</span><span>WATERMARK STUDIO</span></strong></a><span class="private"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6z"/><path d="m8 12 3 3 5-6"/></svg><span data-i18n="privacy">本地处理，图片不上传</span></span></header>
@@ -29,12 +29,21 @@
         <div class="field range-field"><label for="margin"><span data-i18n="margin">边缘间距</span> <output id="margin-value">1%</output></label><input id="margin" type="range" min="0" max="10" step="0.1" value="1"><p class="field-note" data-i18n="marginHint">调至 0% 可贴近边角</p></div>
         <div class="field range-field"><label for="opacity"><span data-i18n="opacity">不透明度</span> <output id="opacity-value">90%</output></label><input id="opacity" type="range" min="10" max="100" step="5" value="90"></div>
         <fieldset class="color-field"><legend><span data-i18n="color">文字颜色</span></legend><div><button data-color="light" aria-label="白色文字" data-i18n-aria="lightLabel" aria-pressed="true"><span class="swatch light"></span><span data-i18n="light">白色</span></button><button data-color="dark" aria-label="深色文字" data-i18n-aria="darkLabel" aria-pressed="false"><span class="swatch dark"></span><span data-i18n="dark">深色</span></button></div></fieldset>
+        <section class="trace-settings" aria-labelledby="trace-heading">
+          <label class="trace-toggle" for="trace-enabled"><span id="trace-heading" data-i18n="traceTitle">隐形 Trace ID</span><input type="checkbox" id="trace-enabled" checked role="switch"></label>
+          <p class="field-note" data-i18n="traceIntro">将可读取的唯一编号嵌入图片像素。</p>
+          <p id="trace-status" class="field-note" role="status"></p>
+          <div id="trace-identity" hidden><label for="trace-id" data-i18n="traceIdLabel">此图片的编号</label><input id="trace-id" type="text" readonly spellcheck="false"><button type="button" id="trace-copy" class="text-button" data-i18n="traceCopy">复制编号</button></div>
+          <button id="trace-record" type="button" class="text-button" disabled data-i18n="traceSaveRecord">保存上次导出的记录</button><p id="trace-record-note" class="field-note"></p>
+          <details class="trace-about"><summary data-i18n="traceAbout">追踪能力与限制</summary><p data-i18n="traceLimits">用于识别副本，不会自动搜索网络。压缩、裁剪和编辑可能影响检测，缩放或旋转可能抹去编号。此编号不是所有权证明。</p><p data-i18n="traceIndependent">独立的实验性水印格式，与 Google SynthID 不兼容。至少需要 256 × 256 像素，并有足够的不透明区域。</p></details>
+        </section>
         <div class="export-area"><button id="download" disabled><svg viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg><span data-i18n="download">下载水印图片</span></button><p><span data-i18n="exportHint">PNG 格式 · 保留原图尺寸</span></p></div>
       </aside>
     </div>
+    <section class="trace-check-panel" aria-labelledby="trace-check-title"><div><p class="eyebrow">TRACE ID</p><h2 id="trace-check-title" data-i18n="traceCheckTitle">检测图片编号</h2><p class="field-note" data-i18n="traceCheckIntro">选择收到或找到的图片，检查是否含有本工具的 Trace ID。图片仍只在本地处理。</p></div><button type="button" id="trace-check" class="upload-button" data-i18n="traceCheckButton">选择图片检测</button><div id="trace-check-result" role="status" aria-live="polite"></div><input id="trace-check-input" type="file" accept="image/jpeg,image/png,image/webp" hidden></section>
     <div class="bottom-note"><span><span data-i18n="footerLeft">轻一点的修饰，刚刚好的存在。</span></span><span><span data-i18n="footerRight">你的图片，始终只属于你。</span></span></div>
     <div id="status" role="status" aria-live="polite"></div>
     <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" hidden>
   </main>
-  <script type="module" src="./app.js?v=fe6ff6eb32a1"></script>
+  <script type="module" src="./app.js?v=da30b44ff938"></script>
 </body></html>
