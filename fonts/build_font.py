@@ -113,74 +113,6 @@ GLYPHS = {
     '~': (56, 'M3 52 Q13 37 27 49 Q40 62 49 44'),
 }
 
-# Two complete signatures: each is authored as a word-sized design instead of
-# concatenating the individual font characters. Private-use codepoints keep the
-# presets distinct from normal editable text; their visible names stay in the UI.
-SIGNATURES = {
-    # Compact connected letter bodies, an extended looped ascender and two
-    # individual descenders. The last q flows into a long, returning flourish.
-    0xE000: (297, '''
-        M-17 67 C-9 72 9 53 20 42 C25 36 27 34 24 41
-        L12 65 C7 78 20 77 35 52
-        M36 45 C35 53 29 66 27 73 C36 56 52 38 59 43
-        C65 49 47 67 51 71 C57 77 73 58 79 47
-        C88 29 103 -3 98 -9 C88 -23 69 36 68 59
-        C67 77 83 70 95 53
-        C103 37 127 35 119 51 C110 72 94 78 94 66
-        C94 53 107 39 120 43
-        M124 39 C115 62 102 92 99 105 C96 119 111 111 124 91
-        C136 72 143 50 143 42
-        C139 54 132 72 140 71 C148 70 160 51 165 43
-        C158 59 153 71 161 69 C168 68 180 48 184 40
-        C179 52 179 60 187 53
-        C196 40 216 31 211 45 C207 57 190 75 185 65
-        C181 55 198 36 212 40
-        M216 36 C206 61 191 94 193 104
-        C197 121 230 99 241 85 C263 53 287 79 252 92
-        C219 105 143 111 64 102 C8 97 -17 86 7 83
-        C42 78 102 98 157 94 C205 91 245 74 274 65
-        M27 23 C32 13 38 17 32 22
-        M47 36 C83 29 125 20 160 19
-        '''),
-    # 行草-inspired pen movement: compressed radicals, open counters, rising
-    # joins and a sweeping final vertical. These paths are authored for this
-    # name alone, rather than slanting three typeset Chinese characters.
-    0xE001: (332, '''
-        M3 15 C17 37 31 26 46 5
-        M-11 39 C6 34 30 26 45 27
-        M30 -4 C30 14 12 43 -6 54
-        M17 33 C38 39 42 53 31 57 C21 61 3 68 -5 72
-        C8 65 27 62 39 62 C34 78 14 98 -7 100
-        M18 52 C13 63 6 76 4 82 C20 86 27 92 31 98
-        M72 -1 C73 19 55 44 45 50
-        M57 29 C72 23 88 19 96 20 C86 28 83 42 76 60
-        C64 92 40 108 27 102 C14 92 49 72 73 67
-        M51 43 C62 67 77 87 101 87 C112 87 116 73 119 55
-        C123 31 130 11 141 2 C150 -7 181 -10 207 -7
-        M137 7 C136 32 122 78 111 95
-        M164 7 C168 13 157 24 145 33
-        M143 36 C142 54 136 68 140 65 C150 61 170 62 185 53
-        C188 42 193 27 190 23 C182 20 158 27 143 36
-        M140 49 C153 43 171 39 184 39
-        M165 57 C170 61 167 83 152 94 C141 101 139 94 149 86
-        M143 73 C139 80 128 88 123 87
-        M181 65 C190 65 198 72 196 79 C194 88 204 89 213 78
-        M243 -5 C247 1 232 20 218 28
-        M246 21 C242 33 224 51 212 55 C221 51 232 44 235 39
-        C235 53 221 84 223 91 C225 96 238 82 244 70
-        M252 13 C269 7 295 2 307 5 C312 10 302 31 298 39
-        C283 41 268 45 250 49
-        M244 32 C266 23 296 18 321 21
-        M251 61 C264 55 289 51 304 51
-        M241 76 C261 68 298 64 310 65
-        M283 -20 C289 -7 278 25 275 44 C268 71 260 104 270 106
-        C285 110 319 73 329 55 C337 38 318 58 304 74
-        C269 111 185 114 112 106 C67 101 45 102 40 111
-        M56 119 C103 113 157 122 220 115
-        '''),
-}
-
-
 class SketchPen(BasePen):
     def __init__(self):
         super().__init__(None)
@@ -221,7 +153,7 @@ def outline(character, path):
         # before expanding it so even tall ascenders form one continuous stroke.
         dense=[stroke[0]]
         for start,end in zip(stroke,stroke[1:]):
-            steps=max(1,math.ceil(math.dist(start,end)/(.35 if ord(character) in SIGNATURES else 1.2)))
+            steps=max(1,math.ceil(math.dist(start,end)/1.2))
             dense.extend(tuple(a+(b-a)*i/steps for a,b in zip(start,end)) for i in range(1,steps+1))
         stroke=dense
         closed=math.dist(stroke[0],stroke[-1]) < 1
@@ -231,19 +163,8 @@ def outline(character, path):
         for i,(x,y) in enumerate(stroke):
             t=i/max(1,len(stroke)-1)
             taper=1 if closed else .84+.16*math.sin(math.pi*t)
-            if ord(character) in SIGNATURES:
-                # A flexible pointed pen: hairline upward/sideways movement,
-                # pressure on downstrokes, tapered starts and lifted endings.
-                before=stroke[max(0,i-3)];after=stroke[min(len(stroke)-1,i+3)]
-                length=max(.001,math.dist(before,after))
-                down=max(0,(after[1]-before[1])/length)
-                pressure=.30+1.8*down**1.25
-                taper=.30+.70*min(1,t*20,(1-t)*16)
-                radius=pressure*taper*(1+.08*math.sin(3*math.pi*t+phase))
-                lean=.19
-            else:
-                radius=2.45*taper*(1+.07*math.sin(2*math.pi*t+phase))
-                lean=.09
+            radius=2.45*taper*(1+.07*math.sin(2*math.pi*t+phase))
+            lean=.09
             discs.append(Point((x+lean*(78-y))*10,(78-y)*10).buffer(radius*10,quad_segs=5))
         shapes.append(unary_union(discs))
     return unary_union(shapes).buffer(0).simplify(.8,preserve_topology=True)
@@ -270,17 +191,17 @@ def build():
     assert set(GLYPHS)==set(map(chr,range(32,127))), 'Every printable ASCII glyph must be authored.'
     root=Path(__file__).resolve().parents[1]
     target=root/'dist/fonts';target.mkdir(parents=True,exist_ok=True)
-    names={code:f'uni{code:04X}' for code in [*range(32,127),*SIGNATURES]}
+    names={code:f'uni{code:04X}' for code in range(32,127)}
     builder=FontBuilder(1000,isTTF=True)
     builder.setupGlyphOrder(['.notdef',*names.values()])
     glyphs={};metrics={}
     glyphs['.notdef'],metrics['.notdef']=make_glyph('?',50,'M6 5 L39 5 L39 78 L6 78 Z M7 6 L38 77')
-    for code,name in names.items():glyphs[name],metrics[name]=make_glyph(chr(code),*(SIGNATURES[code] if code in SIGNATURES else GLYPHS[chr(code)]))
+    for code,name in names.items():glyphs[name],metrics[name]=make_glyph(chr(code),*GLYPHS[chr(code)])
     builder.setupCharacterMap(names)
     builder.setupGlyf(glyphs)
     builder.setupHorizontalMetrics(metrics)
     builder.setupHorizontalHeader(ascent=1050,descent=-450)
-    builder.setupNameTable({'familyName':'Lumen Hand','styleName':'Regular','uniqueFontIdentifier':'WatermarkStudio-LumenHand-1.200','fullName':'Lumen Hand Regular','psName':'LumenHand-Regular','version':'Version 1.200','designer':'Watermark Studio','description':'Original ASCII pen paths plus intqwq and Shu Yuan Lv pointed-pen signatures. See fonts/README.md for source.','copyright':'Copyright 2026 Watermark Studio.'})
+    builder.setupNameTable({'familyName':'Lumen Hand','styleName':'Regular','uniqueFontIdentifier':'WatermarkStudio-LumenHand-1.300','fullName':'Lumen Hand Regular','psName':'LumenHand-Regular','version':'Version 1.300','designer':'Watermark Studio','description':'Original handwritten ASCII pen paths. See fonts/README.md for source.','copyright':'Copyright 2026 Watermark Studio.'})
     builder.setupOS2(sTypoAscender=1050,sTypoDescender=-450,sTypoLineGap=0,usWinAscent=1050,usWinDescent=450,sxHeight=460,sCapHeight=700,fsType=0)
     builder.setupPost(italicAngle=-5)
     builder.setupMaxp()
@@ -288,7 +209,7 @@ def build():
     builder.font.recalcTimestamp=False
     builder.save(target/'lumen-hand.ttf')
     builder.font.flavor='woff2';builder.save(target/'lumen-hand.woff2')
-    print('Built original Lumen Hand: 95 printable ASCII glyphs + 2 cursive signatures, TTF + WOFF2.')
+    print('Built original Lumen Hand: 95 printable ASCII glyphs, TTF + WOFF2.')
 
 
 if __name__=='__main__':

@@ -14,7 +14,7 @@ test('small type, zero gap and handwritten overhangs stay inside every corner',(
   const ctx={save(){},restore(){},beginPath(){},roundRect(){},fill(){},stroke(){},fillText(text,x,y){const m=this.measureText(text);ink={left:x-m.actualBoundingBoxLeft,right:x+m.actualBoundingBoxRight,top:y-m.actualBoundingBoxAscent,bottom:y+m.actualBoundingBoxDescent};},measureText(text){const size=Number(this.font.match(/([\d.]+)px/)[1]);return {width:text.length*size*.6,actualBoundingBoxLeft:size*.25,actualBoundingBoxRight:text.length*size*.6+size*.3,actualBoundingBoxAscent:size*.8,actualBoundingBoxDescent:size*.25};}};
   for(const [width,height] of [[1600,1000],[300,1200],[32,16]])
     for(const position of ['tl','tr','bl','br'])
-      for(const style of ['capsule','simple','serif','handwriting',...Object.keys(SIGNATURE_PRESETS)])
+      for(const style of ['capsule','simple','serif','handwriting'])
         for(const size of [.5,1,4,10])
           for(const margin of [0,.1,1,10]){
             const box=drawWatermark(ctx,width,height,{text:'Made by intqwq@X / '+ 'w'.repeat(70),position,style,size,margin,opacity:90,color:'light'});
@@ -26,13 +26,21 @@ test('small type, zero gap and handwritten overhangs stay inside every corner',(
           }
 });
 
-test('dedicated signatures draw original word glyphs rather than separate type characters',()=>{
+test('the supplied signature draws as an image in all corners, without font glyphs or padding',()=>{
   let drawn;
-  const ctx={save(){},restore(){},fillText(text){drawn=text;},measureText(){return {width:120,actualBoundingBoxAscent:25,actualBoundingBoxDescent:8};}};
-  for(const [style,preset] of Object.entries(SIGNATURE_PRESETS)){
-    drawWatermark(ctx,1600,1000,{text:preset.text,style,position:'br',margin:0,size:2,opacity:90,color:'light'});
-    assert.equal(drawn,preset.glyph);assert.ok(ctx.font.includes('Lumen Hand'));
+  const ctx={save(){},restore(){},drawImage(...args){drawn=args;},fillText(){assert.fail('Signature must not use font glyphs.');}};
+  const signature={width:470,height:165,light:{id:'light ink'},dark:{id:'dark ink'}};
+  assert.deepEqual(Object.keys(SIGNATURE_PRESETS),['signature-intqwq']);
+  assert.equal(SIGNATURE_PRESETS['signature-intqwq'].text,'intqwq@X');
+  for(const position of ['tl','tr','bl','br'])for(const size of [.5,4,10])for(const margin of [0,1,10])for(const color of ['light','dark']){
+    const box=drawWatermark(ctx,1600,1000,{style:'signature-intqwq',position,margin,size,opacity:90,color},signature);
+    assert.equal(drawn[0],signature[color]);
+    assert.equal(box.height,size*10);assert.equal(box.width/box.height,470/165);
+    assert.equal(box.x,position.endsWith('r')?1600-margin*10-box.width:margin*10);
+    assert.equal(box.y,position.startsWith('b')?1000-margin*10-box.height:margin*10);
+    assert.deepEqual(drawn.slice(1),[box.x,box.y,box.width,box.height]);
   }
+  assert.throws(()=>drawWatermark(ctx,1600,1000,{style:'signature-intqwq',position:'br',size:4}),/not ready/);
 });
 
 test('edge spacing moves the same watermark closer without changing its size',()=>{

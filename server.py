@@ -12,6 +12,7 @@ ASSETS = {
     '/index.html': ('index.html', 'text/html; charset=utf-8'),
     '/app.js': ('app.js', 'text/javascript; charset=utf-8'),
     '/renderer.js': ('renderer.js', 'text/javascript; charset=utf-8'),
+    '/signature.js': ('signature.js', 'text/javascript; charset=utf-8'),
     '/i18n.js': ('i18n.js', 'text/javascript; charset=utf-8'),
     '/style.css': ('style.css', 'text/css; charset=utf-8'),
     '/favicon.svg': ('favicon.svg', 'image/svg+xml'),
@@ -20,6 +21,7 @@ ASSETS = {
     '/apple-touch-icon.png': ('apple-touch-icon.png', 'image/png'),
     '/fonts/lumen-hand.woff2': ('fonts/lumen-hand.woff2', 'font/woff2'),
     '/fonts/lumen-hand.ttf': ('fonts/lumen-hand.ttf', 'font/ttf'),
+    '/signatures/intqwq-x.png': ('signatures/intqwq-x.png', 'image/png'),
 }
 
 

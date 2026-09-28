@@ -1,5 +1,6 @@
 import {DEFAULT_WATERMARK, drawWatermark, resolveWatermarkText, SIGNATURE_PRESETS, isHandwrittenStyle} from './renderer.js';
 import {browserLanguage, localizePage, translate} from './i18n.js';
+import {loadSignature} from './signature.js';
 let language=browserLanguage();
 const t=key=>translate(key,language);
 localizePage(document,language);
@@ -8,6 +9,7 @@ const defaults = {text:'',position:'br',style:'capsule',size:4,margin:1,opacity:
 const ranges={size:{minimum:.5,maximum:10,step:.1},margin:{minimum:0,maximum:10,step:.1},opacity:{minimum:10,maximum:100,step:5}};
 let settings = {...defaults}, source = null, filename = '', pending = false, loadId = 0, messageTimer;
 let fontStatus='loading',fontPromise;
+let signatureStatus='loading',signaturePromise,signature;
 const canvas = $('preview'), ctx = canvas.getContext('2d');
 $('watermark').placeholder=DEFAULT_WATERMARK;
 let statusKey='';
@@ -18,23 +20,40 @@ function sync() {
   $('watermark').value=settings.text; $('char-count').textContent=`${settings.text.length} / 100`;
   for (const name of Object.keys(ranges)) {$(name).value=settings[name];$(name+'-value').textContent=settings[name]+'%';}
   for (const name of ['position','style','color']) document.querySelectorAll(`[data-${name}]`).forEach(button=>button.setAttribute('aria-pressed',String(button.dataset[name]===settings[name])));
-  const handwritten=isHandwrittenStyle(settings.style);
-  $('font-status').hidden=!handwritten;
-  $('font-status').textContent=t(fontStatus==='ready'?(SIGNATURE_PRESETS[settings.style]?'signatureNote':'handwritingNote'):fontStatus==='error'?'fontError':'fontLoading');
-  $('retry-font').hidden=!handwritten || fontStatus!=='error';
-  $('download').disabled=!source || pending || (handwritten && fontStatus!=='ready');
+  const handwritten=isHandwrittenStyle(settings.style),signed=!!SIGNATURE_PRESETS[settings.style];
+  const assetStatus=signed?signatureStatus:fontStatus;
+  $('font-status').hidden=!handwritten&&!signed;
+  $('font-status').textContent=t(assetStatus==='ready'?(signed?'signatureNote':'handwritingNote'):assetStatus==='error'?(signed?'signatureError':'fontError'):(signed?'signatureLoading':'fontLoading'));
+  $('retry-font').hidden=(!handwritten&&!signed) || assetStatus!=='error';
+  $('retry-font').textContent=t(signed?'retrySignature':'retryFont');
+  $('signature-sample').hidden=signatureStatus!=='ready';
+  $('download').disabled=!source || pending || !assetsReady();
   render();
 }
+function assetsReady(){return SIGNATURE_PRESETS[settings.style]?signatureStatus==='ready':!isHandwrittenStyle(settings.style)||fontStatus==='ready';}
 function render() {
   if (!source) return;
   const scale=Math.min(1,1800/Math.max(source.width,source.height));
   canvas.width=Math.max(1,Math.round(source.width*scale));canvas.height=Math.max(1,Math.round(source.height*scale));
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  // Render in source coordinates so preview and export use exactly the same layout.
+  // Preview and export share source coordinates and the same signature bitmap.
   ctx.save();ctx.scale(canvas.width/source.width,canvas.height/source.height);
   ctx.drawImage(source,0,0);
-  if(!isHandwrittenStyle(settings.style) || fontStatus==='ready')drawWatermark(ctx,source.width,source.height,settings);
+  if(assetsReady())drawWatermark(ctx,source.width,source.height,settings,signature);
   ctx.restore();
+}
+async function loadSignatureArtwork(){
+  if(signatureStatus==='ready')return;
+  if(signaturePromise)return signaturePromise;
+  signatureStatus='loading';sync();
+  signaturePromise=loadSignature(new URL('./signatures/intqwq-x.png',import.meta.url).href)
+    .then(loaded=>{
+      signature=loaded;signatureStatus='ready';
+      const sample=$('signature-sample');sample.width=loaded.width;sample.height=loaded.height;
+      sample.getContext('2d').drawImage(loaded.dark,0,0);
+    }).catch(()=>{signatureStatus='error';})
+    .finally(()=>{signaturePromise=null;sync();});
+  return signaturePromise;
 }
 async function loadHandwritingFont() {
   if(fontStatus==='ready')return;
@@ -64,14 +83,14 @@ async function loadFile(file) {
   } catch {bitmap?.close();if(request===loadId) notify('readError');}
 }
 async function download() {
-  if(!source || pending || (isHandwrittenStyle(settings.style) && fontStatus!=='ready')) return;
+  if(!source || pending || !assetsReady()) return;
   pending=true;sync();
   const exportName=filename.replace(/\.[^.]+$/,'')+'-watermarked.png';
   let output;
   try {
     output=document.createElement('canvas');output.width=source.width;output.height=source.height;
-    const out=output.getContext('2d');if(!out) throw new Error('canvas');
-    out.drawImage(source,0,0);drawWatermark(out,output.width,output.height,settings);
+    const out=output.getContext('2d');if(!out)throw new Error('canvas');
+    out.drawImage(source,0,0);drawWatermark(out,output.width,output.height,settings,signature);
     const blob=await new Promise(resolve=>output.toBlob(resolve,'image/png'));
     if(!blob) throw new Error('export');
     const url=URL.createObjectURL(blob),link=document.createElement('a');
@@ -96,7 +115,7 @@ for(const name of ['position','style','color']) document.querySelectorAll(`[data
 });
 $('reset').onclick=()=>{settings={...defaults};sync();notify('resetDone');};
 $('download').onclick=download;
-$('retry-font').onclick=loadHandwritingFont;
+$('retry-font').onclick=()=>SIGNATURE_PRESETS[settings.style]?loadSignatureArtwork():loadHandwritingFont();
 let dragDepth=0;
 document.addEventListener('dragover',event=>event.preventDefault());
 document.addEventListener('drop',event=>event.preventDefault());
@@ -106,6 +125,7 @@ $('drop-zone').addEventListener('dragover',event=>{event.preventDefault();event.
 $('drop-zone').addEventListener('drop',event=>{event.preventDefault();dragDepth=0;$('drop-zone').classList.remove('dragging');loadFile(event.dataTransfer.files[0]);});
 sync();
 void loadHandwritingFont();
+void loadSignatureArtwork();
 addEventListener('languagechange',()=>{
   language=browserLanguage();localizePage(document,language);sync();
   if(statusKey)$('status').textContent=t(statusKey);
@@ -116,7 +136,7 @@ if (document.modelContext?.registerTool) {
   const tool={
     name:'configure_watermark',title:t('configureTool'),
     description:'Update the visible watermark settings and preview for the image already selected by the user. Does not upload or download an image.',
-    inputSchema:{type:'object',properties:{text:{type:'string',maxLength:100,description:'Custom watermark text. Empty uses Made by intqwq@X. A signature preset sets its own exact text; changing that text returns to handwriting.'},position:{type:'string',enum:['tl','tr','bl','br']},style:{type:'string',enum:['capsule','simple','serif','handwriting','signature-intqwq','signature-shuyuanlv']},size:{type:'number',minimum:.5,maximum:10,multipleOf:.1},margin:{type:'number',minimum:0,maximum:10,multipleOf:.1,description:'Gap from the selected corner as a percentage of the shorter image side.'},opacity:{type:'number',minimum:10,maximum:100,multipleOf:5},color:{type:'string',enum:['light','dark']}},additionalProperties:false},
+    inputSchema:{type:'object',properties:{text:{type:'string',maxLength:100,description:'Custom watermark text. Empty uses Made by intqwq@X. The signature preset uses the supplied intqwq@X artwork; changing that text returns to handwriting.'},position:{type:'string',enum:['tl','tr','bl','br']},style:{type:'string',enum:['capsule','simple','serif','handwriting','signature-intqwq']},size:{type:'number',minimum:.5,maximum:10,multipleOf:.1},margin:{type:'number',minimum:0,maximum:10,multipleOf:.1,description:'Gap from the selected corner as a percentage of the shorter image side.'},opacity:{type:'number',minimum:10,maximum:100,multipleOf:5},color:{type:'string',enum:['light','dark']}},additionalProperties:false},
     annotations:{readOnlyHint:false,untrustedContentHint:false},
     async execute(input){
       if(!input || typeof input!=='object' || Array.isArray(input)) throw new Error('Expected a settings object.');
@@ -136,7 +156,10 @@ if (document.modelContext?.registerTool) {
         if(Object.hasOwn(input,'text') && input.text!==preset.text)next.style='handwriting';
         else next.text=preset.text;
       }
-      if(isHandwrittenStyle(next.style)){
+      if(SIGNATURE_PRESETS[next.style]){
+        await loadSignatureArtwork();
+        if(signatureStatus!=='ready')throw new Error(t('signatureError'));
+      }else if(isHandwrittenStyle(next.style)){
         await loadHandwritingFont();
         if(fontStatus!=='ready')throw new Error(t('fontError'));
       }

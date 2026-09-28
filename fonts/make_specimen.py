@@ -16,12 +16,4 @@ for label,text,size in rows:
     draw.text((60,y+22),text,font=ImageFont.truetype(str(font),size),fill='#4433bb')
     y+=99
 image.save(root/'fonts/specimen.png')
-signatures=Image.new('RGB',(1280,490),'#fbf9f3')
-proof=ImageDraw.Draw(signatures)
-proof.text((60,28),'Original pointed-pen signatures',font=ImageFont.load_default(size=30),fill='#172133')
-for x,label,glyph in [(60,'intqwq','\uE000'),(645,'Shu Yuan Lv','\uE001')]:
-    proof.text((x,105),label,font=ImageFont.load_default(size=20),fill='#79728f')
-    proof.text((x,135),glyph,font=ImageFont.truetype(str(font),150),fill='#172133')
-    proof.text((x,385),glyph,font=ImageFont.truetype(str(font),32),fill='#172133')
-signatures.save(root/'fonts/signatures.png')
 print('Saved fonts/specimen.png')
